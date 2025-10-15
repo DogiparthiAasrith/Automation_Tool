@@ -95,5 +95,6 @@ def main():
         handle_run_automations(args)
 
 if __name__ == "__main__":
-    main()```
+    main()
+
 
