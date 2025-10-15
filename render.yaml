@@ -1,0 +1,68 @@
+# ===================================================
+#      Morphius AI Backend - render.yaml (Corrected)
+# ===================================================
+
+envVarGroups:
+  - name: morphius-secrets # Define a shared group for all secrets
+    envVars:
+      - key: POSTGRES_URL
+        fromService:
+          type: pserv
+          name: morphius-db # This MUST exactly match the database service name below
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false # You will set this secret manually in the Render dashboard
+      - key: GMAIL_EMAIL
+        sync: false # You will set this secret manually in the Render dashboard
+      - key: GMAIL_PASSWORD
+        sync: false # You will set this secret manually in the Render dashboard
+      - key: CONTACTOUT_API_TOKEN
+        sync: false # You will set this secret manually in the Render dashboard
+      - key: PYTHON_VERSION
+        value: 3.10.4
+
+services:
+  # -----------------
+  # The PostgreSQL Database
+  # -----------------
+  - type: pserv
+    name: morphius-db # This name is critical. It's used by the env group above.
+    plan: free # Note: Use a paid plan for production apps.
+    postgres:
+      version: 14
+
+  # -----------------
+  # The Background Worker for handling email replies (runs 24/7)
+  # -----------------
+  - type: worker
+    name: reply-processor
+    plan: free
+    env: python
+    # First, install packages. Second, ensure the database schema is ready.
+    buildCommand: "pip install -r requirements.txt && python main.py setup-db"
+    startCommand: "python main.py process-replies --daemon"
+    envVarGroup: morphius-secrets # Use the shared environment group
+
+  # -----------------
+  # Cron Job to send the initial batch of emails
+  # -----------------
+  - type: cron
+    name: daily-outreach
+    plan: free
+    schedule: "0 14 * * *" # Runs every day at 14:00 UTC (e.g., 9 AM EST)
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py send-outreach"
+    envVarGroup: morphius-secrets # Use the same shared environment group
+
+  # -----------------
+  # Cron Job to send follow-ups and handle unsubscribes
+  # -----------------
+  - type: cron
+    name: daily-automations
+    plan: free
+    schedule: "0 15 * * *" # Runs every day at 15:00 UTC (e.g., 10 AM EST)
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py run-automations"
+    envVarGroup: morphius-secrets # Use the same shared environment group
