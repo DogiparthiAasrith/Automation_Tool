@@ -1,6 +1,6 @@
 import pandas as pd
 import datetime
-from emailing import send_email
+from emailing import send_email, OTHER_SERVICES_LINK
 
 def send_follow_ups(conn):
     """Sends a follow-up to contacts who haven't replied after a set time."""
